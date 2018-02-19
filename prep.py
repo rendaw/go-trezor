@@ -7,6 +7,8 @@ import depflow
 flow = depflow.Depflow()
 
 
+os.makedirs('messages', exist_ok=True)
+
 @flow.depends(
     depflow.no_file('{}/bin/protoc-gen-go'.format(os.environ['GOPATH'])))
 def protocgengo():
@@ -18,21 +20,23 @@ def protocgengo():
     ])
 
 
-for source in ('config', 'messages', 'storage', 'types'):
-    sflow = flow.scope('proto', source)
-    spath = 'trezor-common/protob/{}.proto'.format(source)
+spaths = []
+sources = ('config', 'messages', 'storage', 'types')
+for source in sources:
+    spaths.append('trezor-common/protob/{}.proto'.format(source))
 
-    @flow.depends(
-        depflow.no_file('{}.pb.go'.format(source)),
-        depflow.file_hash(spath),
-    )
-    def proto():
-        env = os.environ.copy()
-        env['PATH'] += ':{}/bin'.format(os.environ['GOPATH'])
-        subprocess.check_call([
-            'protoc',
-            '--go_out=import_path=trezor:.',
-            '-I/usr/include',
-            '-I./trezor-common/protob',
-            spath,
-        ], env=env)
+
+@flow.depends(
+    *[depflow.no_file('{}.pb.go'.format(source)) for source in sources],
+    *[depflow.file_hash(spath) for spath in spaths],
+)
+def proto():
+    env = os.environ.copy()
+    env['PATH'] += ':{}/bin'.format(os.environ['GOPATH'])
+    subprocess.check_call([
+        'protoc',
+        '--go_out=import_path=trezor.messages:messages/.',
+        '-I/usr/include',
+        '-I./trezor-common/protob',
+        *spaths,
+    ], env=env)

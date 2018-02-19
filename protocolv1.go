@@ -16,15 +16,15 @@ func ProtocolV1New() (Protocol, error) {
 	return ProtocolV1{}, nil
 }
 
-func (self ProtocolV1) sessionBegin(transport Transport) error {
+func (self ProtocolV1) SessionBegin(transport Transport) error {
 	return nil
 }
 
-func (self ProtocolV1) sessionEnd(transport Transport) error {
+func (self ProtocolV1) SessionEnd(transport Transport) error {
 	return nil
 }
 
-func (self ProtocolV1) write(transport Transport, messageType int32, data []byte) error {
+func (self ProtocolV1) Write(transport Transport, messageType MessageType, data []byte) error {
 	dataHeader := [2 + 2 + 4]byte{}
 	dataHeader[0] = '#'
 	dataHeader[1] = '#'
@@ -36,7 +36,7 @@ func (self ProtocolV1) write(transport Transport, messageType int32, data []byte
 		chunk[0] = '?'
 		off := copy(chunk[1:], data)
 		data = data[off:]
-		err := transport.writeChunk(chunk[:])
+		err := transport.WriteChunk(chunk[:])
 		if err != nil {
 			return err
 		}
@@ -44,8 +44,8 @@ func (self ProtocolV1) write(transport Transport, messageType int32, data []byte
 	return nil
 }
 
-func (self ProtocolV1) read(transport Transport) (int32, []byte, error) {
-	chunk, err := transport.readChunk()
+func (self ProtocolV1) Read(transport Transport) (MessageType, []byte, error) {
+	chunk, err := transport.ReadChunk()
 	if err != nil {
 		return 0, nil, err
 	}
@@ -54,7 +54,7 @@ func (self ProtocolV1) read(transport Transport) (int32, []byte, error) {
 		return 0, nil, err
 	}
 	for uint32(len(data)) < dataLen {
-		chunk, err := transport.readChunk()
+		chunk, err := transport.ReadChunk()
 		if err != nil {
 			return 0, nil, err
 		}
@@ -63,13 +63,13 @@ func (self ProtocolV1) read(transport Transport) (int32, []byte, error) {
 	return messageType, data[:dataLen], nil
 }
 
-func parseFirst(proto ProtocolV1, chunk []byte) (int32, uint32, []byte, error) {
+func parseFirst(proto ProtocolV1, chunk []byte) (MessageType, uint32, []byte, error) {
 	magic := []byte{'?', '#', '#'}
 	if !bytes.Equal(chunk[:3], magic) {
 		return 0, 0, nil, fmt.Errorf("Expected magic characters %s, got %s", hex.EncodeToString(magic), hex.EncodeToString(chunk[0:3]))
 	}
 	offset := 3
-	messageType := int32(binary.BigEndian.Uint16(chunk[offset : offset+2]))
+	messageType := MessageType(binary.BigEndian.Uint16(chunk[offset : offset+2]))
 	offset += 2
 	dataLen := binary.BigEndian.Uint32(chunk[offset : offset+4])
 	offset += 4

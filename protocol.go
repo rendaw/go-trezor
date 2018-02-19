@@ -1,8 +1,8 @@
 package trezor
 
 type Protocol interface {
-	sessionBegin(transport Transport) error
-	sessionEnd(transport Transport) error
-	read(transport Transport) (int32, []byte, error)
-	write(transport Transport, messageType int32, data []byte) error
+	SessionBegin(transport Transport) error
+	SessionEnd(transport Transport) error
+	Read(transport Transport) (MessageType, []byte, error)
+	Write(transport Transport, messageType MessageType, data []byte) error
 }

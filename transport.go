@@ -1,7 +1,14 @@
 package trezor
 
+import "github.com/golang/protobuf/proto"
+
 type Transport interface {
+	Open() error
+	Close() error
+	Read() (MessageType, []byte, error)
+	Write(message proto.Message) error
+
 	// Used by Protocol
-	readChunk() ([]byte, error)
-	writeChunk([]byte) error
+	ReadChunk() ([]byte, error)
+	WriteChunk([]byte) error
 }

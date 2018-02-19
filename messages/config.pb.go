@@ -2,16 +2,124 @@
 // source: config.proto
 
 /*
-Package trezor is a generated protocol buffer package.
+Package trezor_messages is a generated protocol buffer package.
 
 It is generated from these files:
 	config.proto
+	messages.proto
+	storage.proto
+	types.proto
 
 It has these top-level messages:
 	DeviceDescriptor
 	Configuration
+	Initialize
+	GetFeatures
+	Features
+	ClearSession
+	ApplySettings
+	ApplyFlags
+	ChangePin
+	Ping
+	Success
+	Failure
+	ButtonRequest
+	ButtonAck
+	PinMatrixRequest
+	PinMatrixAck
+	Cancel
+	PassphraseRequest
+	PassphraseAck
+	GetEntropy
+	Entropy
+	GetPublicKey
+	PublicKey
+	GetAddress
+	EthereumGetAddress
+	Address
+	EthereumAddress
+	WipeDevice
+	LoadDevice
+	ResetDevice
+	BackupDevice
+	EntropyRequest
+	EntropyAck
+	RecoveryDevice
+	WordRequest
+	WordAck
+	SignMessage
+	VerifyMessage
+	MessageSignature
+	EncryptMessage
+	EncryptedMessage
+	DecryptMessage
+	DecryptedMessage
+	CipherKeyValue
+	CipheredKeyValue
+	EstimateTxSize
+	TxSize
+	SignTx
+	SimpleSignTx
+	TxRequest
+	TxAck
+	EthereumSignTx
+	EthereumTxRequest
+	EthereumTxAck
+	EthereumSignMessage
+	EthereumVerifyMessage
+	EthereumMessageSignature
+	SignIdentity
+	SignedIdentity
+	GetECDHSessionKey
+	ECDHSessionKey
+	SetU2FCounter
+	FirmwareErase
+	FirmwareRequest
+	FirmwareUpload
+	SelfTest
+	NEMGetAddress
+	NEMAddress
+	NEMSignTx
+	NEMSignedTx
+	NEMDecryptMessage
+	NEMDecryptedMessage
+	CosiCommit
+	CosiCommitment
+	CosiSign
+	CosiSignature
+	DebugLinkDecision
+	DebugLinkGetState
+	DebugLinkState
+	DebugLinkStop
+	DebugLinkLog
+	DebugLinkMemoryRead
+	DebugLinkMemory
+	DebugLinkMemoryWrite
+	DebugLinkFlashErase
+	Storage
+	HDNodeType
+	HDNodePathType
+	CoinType
+	MultisigRedeemScriptType
+	TxInputType
+	TxOutputType
+	TxOutputBinType
+	TransactionType
+	TxRequestDetailsType
+	TxRequestSerializedType
+	IdentityType
+	NEMTransactionCommon
+	NEMTransfer
+	NEMMosaic
+	NEMProvisionNamespace
+	NEMMosaicCreation
+	NEMMosaicDefinition
+	NEMMosaicSupplyChange
+	NEMAggregateModification
+	NEMCosignatoryModification
+	NEMImportanceTransfer
 */
-package trezor
+package trezor_messages
 
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
