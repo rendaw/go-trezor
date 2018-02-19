@@ -2,7 +2,7 @@
 // source: config.proto
 
 /*
-Package trezor_messages is a generated protocol buffer package.
+Package messages is a generated protocol buffer package.
 
 It is generated from these files:
 	config.proto
@@ -119,7 +119,7 @@ It has these top-level messages:
 	NEMCosignatoryModification
 	NEMImportanceTransfer
 */
-package trezor_messages
+package messages
 
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"

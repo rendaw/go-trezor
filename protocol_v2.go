@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+
+	"trezor-encryption/trezor/messages"
 )
 
 const REPLEN_V2 = 64
@@ -14,13 +16,13 @@ type ProtocolV2 struct {
 }
 
 func ProtocolV2New() (Protocol, error) {
-	return ProtocolV2{
+	return &ProtocolV2{
 		hasSession: false,
 		session:    0,
 	}, nil
 }
 
-func (self ProtocolV2) SessionBegin(transport Transport) error {
+func (self *ProtocolV2) SessionBegin(transport Transport) error {
 	chunk := [REPLEN_V2]byte{}
 	chunk[0] = 3
 	for i := 1; i < len(chunk); i++ {
@@ -41,7 +43,7 @@ func (self ProtocolV2) SessionBegin(transport Transport) error {
 	return nil
 }
 
-func (self ProtocolV2) SessionEnd(transport Transport) error {
+func (self *ProtocolV2) SessionEnd(transport Transport) error {
 	if !self.hasSession {
 		return nil
 	}
@@ -67,7 +69,7 @@ func (self ProtocolV2) SessionEnd(transport Transport) error {
 	return nil
 }
 
-func (self ProtocolV2) Write(transport Transport, messageType MessageType, data []byte) error {
+func (self *ProtocolV2) Write(transport Transport, messageType messages.MessageType, data []byte) error {
 	if !self.hasSession {
 		return fmt.Errorf("Missing session for v2 protocol")
 	}
@@ -107,7 +109,7 @@ func (self ProtocolV2) Write(transport Transport, messageType MessageType, data 
 	return nil
 }
 
-func (self ProtocolV2) Read(transport Transport) (MessageType, []byte, error) {
+func (self *ProtocolV2) Read(transport Transport) (messages.MessageType, []byte, error) {
 	if !self.hasSession {
 		return 0, nil, fmt.Errorf("Missing session for v2 protocol")
 	}
@@ -136,7 +138,7 @@ func (self ProtocolV2) Read(transport Transport) (MessageType, []byte, error) {
 	return messageType, data[:dataLen], nil
 }
 
-func ParseFirstV2(proto ProtocolV2, chunk []byte) (MessageType, uint32, []byte, error) {
+func ParseFirstV2(proto *ProtocolV2, chunk []byte) (messages.MessageType, uint32, []byte, error) {
 	offset := 0
 	magic := chunk[offset]
 	offset += 1
@@ -151,14 +153,14 @@ func ParseFirstV2(proto ProtocolV2, chunk []byte) (MessageType, uint32, []byte, 
 		binary.BigEndian.PutUint32(protoSessionBytes[:], proto.session)
 		return 0, 0, nil, fmt.Errorf("Session mismatch, expected %s, got %s", hex.EncodeToString(protoSessionBytes[:]), hex.EncodeToString(sessionBytes))
 	}
-	messageType := MessageType(binary.BigEndian.Uint32(chunk[offset : offset+4]))
+	messageType := messages.MessageType(binary.BigEndian.Uint32(chunk[offset : offset+4]))
 	offset += 4
 	dataLen := binary.BigEndian.Uint32(chunk[offset : offset+4])
 	offset += 4
 	return messageType, dataLen, chunk[offset:], nil
 }
 
-func ParseNextV2(proto ProtocolV2, chunk []byte) ([]byte, error) {
+func ParseNextV2(proto *ProtocolV2, chunk []byte) ([]byte, error) {
 	offset := 0
 	magic := chunk[offset]
 	offset += 1
@@ -177,7 +179,7 @@ func ParseNextV2(proto ProtocolV2, chunk []byte) ([]byte, error) {
 	return chunk[offset:], nil
 }
 
-func (self ProtocolV2) ParseSessionOpen(resp []byte) error {
+func (self *ProtocolV2) ParseSessionOpen(resp []byte) error {
 	magic := resp[0]
 	session := binary.BigEndian.Uint32(resp[1:5])
 	if magic != 0x03 {

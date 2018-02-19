@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"trezor-encryption/trezor/messages"
 )
 
 const REPLEN_V1 = 64
@@ -13,18 +14,18 @@ type ProtocolV1 struct {
 }
 
 func ProtocolV1New() (Protocol, error) {
-	return ProtocolV1{}, nil
+	return &ProtocolV1{}, nil
 }
 
-func (self ProtocolV1) SessionBegin(transport Transport) error {
+func (self *ProtocolV1) SessionBegin(transport Transport) error {
 	return nil
 }
 
-func (self ProtocolV1) SessionEnd(transport Transport) error {
+func (self *ProtocolV1) SessionEnd(transport Transport) error {
 	return nil
 }
 
-func (self ProtocolV1) Write(transport Transport, messageType MessageType, data []byte) error {
+func (self *ProtocolV1) Write(transport Transport, messageType messages.MessageType, data []byte) error {
 	dataHeader := [2 + 2 + 4]byte{}
 	dataHeader[0] = '#'
 	dataHeader[1] = '#'
@@ -35,6 +36,9 @@ func (self ProtocolV1) Write(transport Transport, messageType MessageType, data 
 		chunk := [REPLEN_V1]byte{}
 		chunk[0] = '?'
 		off := copy(chunk[1:], data)
+		for i := off; i < len(chunk); i++ {
+			chunk[i] = 0
+		}
 		data = data[off:]
 		err := transport.WriteChunk(chunk[:])
 		if err != nil {
@@ -44,12 +48,12 @@ func (self ProtocolV1) Write(transport Transport, messageType MessageType, data 
 	return nil
 }
 
-func (self ProtocolV1) Read(transport Transport) (MessageType, []byte, error) {
+func (self *ProtocolV1) Read(transport Transport) (messages.MessageType, []byte, error) {
 	chunk, err := transport.ReadChunk()
 	if err != nil {
 		return 0, nil, err
 	}
-	messageType, dataLen, data, err := parseFirst(self, chunk)
+	messageType, dataLen, data, err := parseFirstV1(self, chunk)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -63,13 +67,13 @@ func (self ProtocolV1) Read(transport Transport) (MessageType, []byte, error) {
 	return messageType, data[:dataLen], nil
 }
 
-func parseFirst(proto ProtocolV1, chunk []byte) (MessageType, uint32, []byte, error) {
+func parseFirstV1(proto *ProtocolV1, chunk []byte) (messages.MessageType, uint32, []byte, error) {
 	magic := []byte{'?', '#', '#'}
 	if !bytes.Equal(chunk[:3], magic) {
 		return 0, 0, nil, fmt.Errorf("Expected magic characters %s, got %s", hex.EncodeToString(magic), hex.EncodeToString(chunk[0:3]))
 	}
 	offset := 3
-	messageType := MessageType(binary.BigEndian.Uint16(chunk[offset : offset+2]))
+	messageType := messages.MessageType(binary.BigEndian.Uint16(chunk[offset : offset+2]))
 	offset += 2
 	dataLen := binary.BigEndian.Uint32(chunk[offset : offset+4])
 	offset += 4

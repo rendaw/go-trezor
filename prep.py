@@ -9,6 +9,7 @@ flow = depflow.Depflow()
 
 os.makedirs('messages', exist_ok=True)
 
+
 @flow.depends(
     depflow.no_file('{}/bin/protoc-gen-go'.format(os.environ['GOPATH'])))
 def protocgengo():
@@ -35,7 +36,7 @@ def proto():
     env['PATH'] += ':{}/bin'.format(os.environ['GOPATH'])
     subprocess.check_call([
         'protoc',
-        '--go_out=import_path=trezor.messages:messages/.',
+        '--go_out=import_path=messages:messages/.',
         '-I/usr/include',
         '-I./trezor-common/protob',
         *spaths,

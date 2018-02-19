@@ -5,6 +5,8 @@ import (
 	"os"
 	"reflect"
 
+	"trezor-encryption/trezor/messages"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/karalabe/hid"
 )
@@ -13,44 +15,38 @@ func DevTrezor1() (uint16, uint16)   { return 0x534c, 0x0001 }
 func DevTrezor2() (uint16, uint16)   { return 0x1209, 0x53c1 }
 func DevTrezor2BL() (uint16, uint16) { return 0x1209, 0x53c0 }
 
-func IsWirelink(dev hid.DeviceInfo) bool {
+func IsWirelink(dev *hid.DeviceInfo) bool {
 	return dev.UsagePage == 0xFF00 || dev.Interface == 0
 }
 
-func IsDebuglink(dev hid.DeviceInfo) bool {
+func IsDebuglink(dev *hid.DeviceInfo) bool {
 	return dev.UsagePage == 0xFF01 || dev.Interface == 1
 }
 
-func IsTrezor1(dev hid.DeviceInfo) bool {
+func IsTrezor1(dev *hid.DeviceInfo) bool {
 	gotVendor, gotProduct := DevTrezor1()
 	return dev.VendorID == gotVendor && dev.ProductID == gotProduct
 }
-func IsTrezor2(dev hid.DeviceInfo) bool {
+func IsTrezor2(dev *hid.DeviceInfo) bool {
 	gotVendor, gotProduct := DevTrezor2()
 	return dev.VendorID == gotVendor && dev.ProductID == gotProduct
 }
-func IsTrezor2BL(dev hid.DeviceInfo) bool {
+func IsTrezor2BL(dev *hid.DeviceInfo) bool {
 	gotVendor, gotProduct := DevTrezor2BL()
 	return dev.VendorID == gotVendor && dev.ProductID == gotProduct
 }
 
-func Enumerate() ([]HidTransport, error) {
-	out := []HidTransport{}
-	for _, devList := range [][]hid.DeviceInfo{
-		hid.Enumerate(DevTrezor1()),
-		hid.Enumerate(DevTrezor2()),
-		hid.Enumerate(DevTrezor2BL()),
-	} {
-		for _, dev := range devList {
-			if IsWirelink(dev) {
-				continue
-			}
-			transport, err := HidTransportNew(dev)
-			if err != nil {
-				return nil, err
-			}
-			out = append(out, transport)
+func Enumerate() ([]*HidTransport, error) {
+	var out []*HidTransport
+	for _, dev := range hid.Enumerate(0, 0) {
+		if !(IsTrezor1(&dev) || IsTrezor2(&dev) || IsTrezor2BL(&dev)) || IsWirelink(&dev) {
+			continue
 		}
+		transport, err := HidTransportNew(&dev)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, transport)
 	}
 	return out, nil
 }
@@ -60,7 +56,7 @@ type HidHandle struct {
 	handle *hid.Device
 }
 
-func (self HidHandle) Open(info hid.DeviceInfo) error {
+func (self *HidHandle) Open(info *hid.DeviceInfo) error {
 	if self.count == 0 {
 		handle, err := info.Open()
 		if err != nil {
@@ -72,7 +68,7 @@ func (self HidHandle) Open(info hid.DeviceInfo) error {
 	return nil
 }
 
-func (self HidHandle) Close() error {
+func (self *HidHandle) Close() error {
 	if self.count == 1 {
 		err := self.handle.Close()
 		if err != nil {
@@ -86,29 +82,30 @@ func (self HidHandle) Close() error {
 }
 
 type HidTransport struct {
-	info       hid.DeviceInfo
+	info       *hid.DeviceInfo
 	hid        HidHandle
 	hidVersion int
 	protocol   Protocol
 }
 
-func HidTransportNew(info hid.DeviceInfo) (HidTransport, error) {
+func HidTransportNew(info *hid.DeviceInfo) (*HidTransport, error) {
 	forceV1, found := os.LookupEnv("TREZOR_TRANSPORT_V1")
 	var protocol Protocol
 	if IsTrezor2(info) || found && forceV1 != "1" {
 		var err error
 		protocol, err = ProtocolV2New()
 		if err != nil {
-			return HidTransport{}, err
+			return nil, err
 		}
 	} else {
 		var err error
 		protocol, err = ProtocolV1New()
 		if err != nil {
-			return HidTransport{}, err
+			return nil, err
 		}
 	}
-	return HidTransport{
+	return &HidTransport{
+		info: info,
 		hid: HidHandle{
 			count:  0,
 			handle: nil,
@@ -117,23 +114,23 @@ func HidTransportNew(info hid.DeviceInfo) (HidTransport, error) {
 	}, nil
 }
 
-func (self HidTransport) Open() error {
+func (self *HidTransport) Open() error {
 	err := self.hid.Open(self.info)
 	if err != nil {
-		return err
+		return fmt.Errorf("Unable to open device %s: %s", self.info.Path, err)
 	}
 	if IsTrezor1(self.info) {
 		if self.hidVersion, err = ProbeHidVersion(self); err != nil {
 			return err
 		}
 	} else {
-		self.hidVersion = 1
+		self.hidVersion = 2
 	}
 	self.protocol.SessionBegin(self)
 	return nil
 }
 
-func ProbeHidVersion(self HidTransport) (int, error) {
+func ProbeHidVersion(self *HidTransport) (int, error) {
 	data := [65]byte{}
 	data[0] = 0
 	data[1] = 63
@@ -161,7 +158,7 @@ func ProbeHidVersion(self HidTransport) (int, error) {
 	return 0, fmt.Errorf("Unknown HID version")
 }
 
-func (self HidTransport) Close() error {
+func (self *HidTransport) Close() error {
 	self.protocol.SessionEnd(self)
 	err := self.hid.Close()
 	if err != nil {
@@ -171,11 +168,11 @@ func (self HidTransport) Close() error {
 	return nil
 }
 
-func (self HidTransport) Read() (MessageType, []byte, error) {
+func (self *HidTransport) Read() (messages.MessageType, []byte, error) {
 	return self.protocol.Read(self)
 }
 
-func (self HidTransport) ReadChunk() ([]byte, error) {
+func (self *HidTransport) ReadChunk() ([]byte, error) {
 	chunk := [64]byte{}
 	for {
 		read, err := self.hid.handle.Read(chunk[:])
@@ -190,16 +187,16 @@ func (self HidTransport) ReadChunk() ([]byte, error) {
 	return chunk[:], nil
 }
 
-func (self HidTransport) Write(message proto.Message) error {
+func (self *HidTransport) Write(message proto.Message) error {
 	data, err := proto.Marshal(message)
 	if err != nil {
 		return err
 	}
-	self.protocol.Write(self, MessageType(MessageType_value["MessageType_"+reflect.TypeOf(message).Name()]), data)
+	self.protocol.Write(self, messages.MessageType(messages.MessageType_value["MessageType_"+reflect.TypeOf(message).Name()]), data)
 	return nil
 }
 
-func (self HidTransport) WriteChunk(chunk []byte) error {
+func (self *HidTransport) WriteChunk(chunk []byte) error {
 	if len(chunk) != 64 {
 		return fmt.Errorf("Unexpected chunk size: %d", len(chunk))
 	}
