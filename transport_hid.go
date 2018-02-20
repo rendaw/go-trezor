@@ -56,7 +56,7 @@ func Enumerate() ([]*HidTransport, error) {
 
 type HidHandle struct {
 	count  int
-	handle *hid.Device
+	Handle *hid.Device
 }
 
 func (self *HidHandle) Open(info *hid.DeviceInfo) error {
@@ -65,7 +65,7 @@ func (self *HidHandle) Open(info *hid.DeviceInfo) error {
 		if err != nil {
 			return err
 		}
-		self.handle = handle
+		self.Handle = handle
 	}
 	self.count += 1
 	return nil
@@ -73,21 +73,21 @@ func (self *HidHandle) Open(info *hid.DeviceInfo) error {
 
 func (self *HidHandle) Close() error {
 	if self.count == 1 {
-		err := self.handle.Close()
+		err := self.Handle.Close()
 		if err != nil {
 			return err
 		}
 	}
-	if self.count > 1 {
+	if self.count > 0 {
 		self.count -= 1
 	}
 	return nil
 }
 
 type HidTransport struct {
-	info       hid.DeviceInfo
-	hid        HidHandle
-	hidVersion int
+	Info       hid.DeviceInfo
+	Hid        HidHandle
+	HidVersion int
 	protocol   Protocol
 }
 
@@ -108,26 +108,26 @@ func HidTransportNew(info hid.DeviceInfo) (*HidTransport, error) {
 		}
 	}
 	return &HidTransport{
-		info: info,
-		hid: HidHandle{
+		Info: info,
+		Hid: HidHandle{
 			count:  0,
-			handle: nil,
+			Handle: nil,
 		},
 		protocol: protocol,
 	}, nil
 }
 
 func (self *HidTransport) Open() error {
-	err := self.hid.Open(&self.info)
+	err := self.Hid.Open(&self.Info)
 	if err != nil {
-		return fmt.Errorf("Unable to open device %s: %s", self.info.Path, err)
+		return fmt.Errorf("Unable to open device %s: %s", self.Info.Path, err)
 	}
-	if IsTrezor1(&self.info) {
-		if self.hidVersion, err = ProbeHidVersion(self); err != nil {
+	if IsTrezor1(&self.Info) {
+		if self.HidVersion, err = ProbeHidVersion(self); err != nil {
 			return err
 		}
 	} else {
-		self.hidVersion = 2
+		self.HidVersion = 2
 	}
 	self.protocol.SessionBegin(self)
 	return nil
@@ -141,7 +141,7 @@ func ProbeHidVersion(self *HidTransport) (int, error) {
 		data[i] = 0xFF
 	}
 	{
-		n, err := self.hid.handle.Write(data[:])
+		n, err := self.Hid.Handle.Write(data[:])
 		if err != nil {
 			return 0, err
 		}
@@ -150,7 +150,7 @@ func ProbeHidVersion(self *HidTransport) (int, error) {
 		}
 	}
 	{
-		n, err := self.hid.handle.Write(data[1:])
+		n, err := self.Hid.Handle.Write(data[1:])
 		if err != nil {
 			return 0, err
 		}
@@ -163,11 +163,11 @@ func ProbeHidVersion(self *HidTransport) (int, error) {
 
 func (self *HidTransport) Close() error {
 	self.protocol.SessionEnd(self)
-	err := self.hid.Close()
+	err := self.Hid.Close()
 	if err != nil {
 		return err
 	}
-	self.hidVersion = -1
+	self.HidVersion = -1
 	return nil
 }
 
@@ -178,7 +178,7 @@ func (self *HidTransport) Read() (messages.MessageType, []byte, error) {
 func (self *HidTransport) ReadChunk() ([]byte, error) {
 	chunk := [64]byte{}
 	for {
-		read, err := self.hid.handle.Read(chunk[:])
+		read, err := self.Hid.Handle.Read(chunk[:])
 		if err != nil {
 			return nil, err
 		}
@@ -208,14 +208,18 @@ func (self *HidTransport) WriteChunk(chunk []byte) error {
 	if len(chunk) != 64 {
 		return fmt.Errorf("Unexpected chunk size: %d", len(chunk))
 	}
-	if self.hidVersion == 2 {
-		if _, err := self.hid.handle.Write(append([]byte{0}, chunk...)); err != nil {
+	if self.HidVersion == 2 {
+		if _, err := self.Hid.Handle.Write(append([]byte{0}, chunk...)); err != nil {
 			return err
 		}
 	} else {
-		if _, err := self.hid.handle.Write(chunk); err != nil {
+		if _, err := self.Hid.Handle.Write(chunk); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (self *HidTransport) String() string {
+	return self.Info.Path
 }

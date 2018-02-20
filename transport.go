@@ -11,6 +11,7 @@ type Transport interface {
 	Close() error
 	Read() (messages.MessageType, []byte, error)
 	Write(message proto.Message) error
+	String() string
 
 	// Used by Protocol
 	ReadChunk() ([]byte, error)

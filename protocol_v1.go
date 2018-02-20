@@ -60,7 +60,11 @@ func (self *ProtocolV1) Read(transport Transport) (messages.MessageType, []byte,
 		if err != nil {
 			return 0, nil, err
 		}
-		data = append(data, chunk...)
+		parsed, err := parseNextV1(self, chunk)
+		if err != nil {
+			return 0, nil, err
+		}
+		data = append(data, parsed...)
 	}
 	return messageType, data[:dataLen], nil
 }
@@ -76,4 +80,11 @@ func parseFirstV1(proto *ProtocolV1, chunk []byte) (messages.MessageType, uint32
 	dataLen := binary.BigEndian.Uint32(chunk[offset : offset+4])
 	offset += 4
 	return messageType, dataLen, chunk[offset:], nil
+}
+
+func parseNextV1(proto *ProtocolV1, chunk []byte) ([]byte, error) {
+	if chunk[0] != '?' {
+		return nil, fmt.Errorf("Expected magic character 0x3f, got %s", hex.EncodeToString(chunk[0:1]))
+	}
+	return chunk[1:], nil
 }
