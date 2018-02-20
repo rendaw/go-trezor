@@ -39,10 +39,13 @@ func IsTrezor2BL(dev *hid.DeviceInfo) bool {
 func Enumerate() ([]*HidTransport, error) {
 	var out []*HidTransport
 	for _, dev := range hid.Enumerate(0, 0) {
-		if !(IsTrezor1(&dev) || IsTrezor2(&dev) || IsTrezor2BL(&dev)) || IsWirelink(&dev) {
+		if !(IsTrezor1(&dev) || IsTrezor2(&dev) || IsTrezor2BL(&dev)) {
 			continue
 		}
-		transport, err := HidTransportNew(&dev)
+		if !IsWirelink(&dev) {
+			continue
+		}
+		transport, err := HidTransportNew(dev)
 		if err != nil {
 			return nil, err
 		}
@@ -82,16 +85,16 @@ func (self *HidHandle) Close() error {
 }
 
 type HidTransport struct {
-	info       *hid.DeviceInfo
+	info       hid.DeviceInfo
 	hid        HidHandle
 	hidVersion int
 	protocol   Protocol
 }
 
-func HidTransportNew(info *hid.DeviceInfo) (*HidTransport, error) {
+func HidTransportNew(info hid.DeviceInfo) (*HidTransport, error) {
 	forceV1, found := os.LookupEnv("TREZOR_TRANSPORT_V1")
 	var protocol Protocol
-	if IsTrezor2(info) || found && forceV1 != "1" {
+	if IsTrezor2(&info) || found && forceV1 != "1" {
 		var err error
 		protocol, err = ProtocolV2New()
 		if err != nil {
@@ -115,11 +118,11 @@ func HidTransportNew(info *hid.DeviceInfo) (*HidTransport, error) {
 }
 
 func (self *HidTransport) Open() error {
-	err := self.hid.Open(self.info)
+	err := self.hid.Open(&self.info)
 	if err != nil {
 		return fmt.Errorf("Unable to open device %s: %s", self.info.Path, err)
 	}
-	if IsTrezor1(self.info) {
+	if IsTrezor1(&self.info) {
 		if self.hidVersion, err = ProbeHidVersion(self); err != nil {
 			return err
 		}
@@ -192,7 +195,12 @@ func (self *HidTransport) Write(message proto.Message) error {
 	if err != nil {
 		return err
 	}
-	self.protocol.Write(self, messages.MessageType(messages.MessageType_value["MessageType_"+reflect.TypeOf(message).Name()]), data)
+	typeName := "MessageType_" + reflect.TypeOf(message).Elem().Name()
+	messageId, found := messages.MessageType_value[typeName]
+	if !found {
+		return fmt.Errorf("Could not send message; unknown message type %s", typeName)
+	}
+	self.protocol.Write(self, messages.MessageType(messageId), data)
 	return nil
 }
 

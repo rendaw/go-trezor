@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+
 	"trezor-encryption/trezor/messages"
 )
 
@@ -35,11 +36,8 @@ func (self *ProtocolV1) Write(transport Transport, messageType messages.MessageT
 	for len(data) > 0 {
 		chunk := [REPLEN_V1]byte{}
 		chunk[0] = '?'
-		off := copy(chunk[1:], data)
-		for i := off; i < len(chunk); i++ {
-			chunk[i] = 0
-		}
-		data = data[off:]
+		dataLen := copy(chunk[1:], data)
+		data = data[dataLen:]
 		err := transport.WriteChunk(chunk[:])
 		if err != nil {
 			return err

@@ -50,9 +50,6 @@ func (self *ProtocolV2) SessionEnd(transport Transport) error {
 	chunk := [REPLEN_V2]byte{}
 	chunk[0] = 0x04
 	binary.BigEndian.PutUint32(chunk[1:5], self.session)
-	for i := 5; i < len(chunk); i++ {
-		chunk[i] = 0x00
-	}
 	err := transport.WriteChunk(chunk[:])
 	if err != nil {
 		return err
@@ -93,12 +90,9 @@ func (self *ProtocolV2) Write(transport Transport, messageType messages.MessageT
 			binary.BigEndian.PutUint32(repHeader[1:5], uint32(seq))
 		}
 		chunk := [REPLEN_V2]byte{}
-		dataLen := REPLEN_V2 - len(repHeader)
-		off := copy(chunk[0:], repHeader)
-		off = copy(chunk[off:], data)
-		for i := off; i < len(chunk); i++ {
-			chunk[i] = 0
-		}
+		off := 0
+		off += copy(chunk[off:], repHeader)
+		dataLen := copy(chunk[off:], data)
 		err := transport.WriteChunk(chunk[:])
 		if err != nil {
 			return err
