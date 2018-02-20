@@ -1,6 +1,6 @@
 package trezor
 
-import "trezor-encryption/trezor/messages"
+import "github.com/rendaw/go-trezor/messages"
 
 type Protocol interface {
 	SessionBegin(transport Transport) error

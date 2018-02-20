@@ -1,7 +1,7 @@
 package trezor
 
 import (
-	"trezor-encryption/trezor/messages"
+	"github.com/rendaw/go-trezor/messages"
 
 	"github.com/golang/protobuf/proto"
 )

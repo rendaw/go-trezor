@@ -5,7 +5,7 @@ import (
 	"os"
 	"reflect"
 
-	"trezor-encryption/trezor/messages"
+	"github.com/rendaw/go-trezor/messages"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/karalabe/hid"

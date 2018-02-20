@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"trezor-encryption/trezor/messages"
+	"github.com/rendaw/go-trezor/messages"
 )
 
 const REPLEN_V1 = 64
