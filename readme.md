@@ -9,7 +9,7 @@ the responses yourself.
 
 As an example, this is from [go-trezor-encrypt](https://github.com/rendaw/go-trezor-encrypt):
 
-```
+```go
 t := true
 err := device.Write(&messages.CipherKeyValue{
     AddressN:     []uint32{10, 0},
